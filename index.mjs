@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import config from './config.mjs';
+import { route } from './lib/router.mjs';
 
 // Читаем настройки из окружения (с значениями по умолчанию)
 const AGENT_NAME = process.env.AGENT_NAME || 'Agent Lusya';
@@ -10,13 +12,15 @@ let timer = null;
 // Простая очередь задач в памяти (пара примеров для теста).
 // Раздел 3: сюда задачи будут приходить из Telegram / других источников
 const queue = [
-  { text: 'привет, агент' },
-  { text: 'собрать отчёт за день' },
+  '/помощь',
+  '/статус',
+  'просто текст',
 ];
 
 // Запуск: выполняется один раз при старте
 async function init() {
   console.log(`✅ Агент запущен: ${AGENT_NAME}`);
+  console.log('Запущен агент:', config.name);
   // Раздел 3: здесь подключим память, мозг (LLM) и Telegram
 }
 
@@ -25,13 +29,9 @@ function listen() {
   return queue.shift();
 }
 
-// Шаг 2 — ДУМАЕМ: решаем, что ответить на задачу
+// Шаг 2 — ДУМАЕМ: отдаём задачу роутеру команд
 function think(task) {
-  // Раздел 3: здесь вместо простого правила будет мозг (LLM)
-  if (task.text.toLowerCase().includes('привет')) {
-    return 'Привет!';
-  }
-  return `Принял задачу: ${task.text}`;
+  return route(task);
 }
 
 // Шаг 3 — ДЕЙСТВУЕМ: выводим результат

@@ -1,0 +1,17 @@
+{
+  "name": "agent-lusya",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Мой первый агент",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2"
+  }
+}

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import config from './config.mjs';
 import { route } from './lib/router.mjs';
+import { remember, recall } from './lib/memory.mjs';
 
 // Читаем настройки из окружения (с значениями по умолчанию)
 const AGENT_NAME = process.env.AGENT_NAME || 'Agent Lusya';
@@ -15,13 +16,24 @@ const queue = [
   '/помощь',
   '/статус',
   'просто текст',
+  'запомни любимый_цвет = синий',
 ];
 
 // Запуск: выполняется один раз при старте
 async function init() {
   console.log(`✅ Агент запущен: ${AGENT_NAME}`);
   console.log('Запущен агент:', config.name);
-  // Раздел 3: здесь подключим память, мозг (LLM) и Telegram
+
+  // Вспоминаем, когда агент стартовал в прошлый раз
+  const lastStart = await recall('last_start');
+  if (lastStart) {
+    console.log('Прошлый запуск был:', lastStart);
+  } else {
+    console.log('Первый запуск');
+  }
+
+  // Запоминаем текущее время как момент старта
+  await remember('last_start', new Date().toISOString());
 }
 
 // Шаг 1 — СЛУШАЕМ: берём следующую задачу из очереди (или undefined, если пусто)
@@ -43,7 +55,20 @@ function act(task, decision) {
 // Одна итерация работы агента: слушаем → думаем → действуем
 async function tick() {
   const t = listen();
-  if (t) act(t, think(t));
+  if (!t) return;
+
+  // Пример работы с памятью: задача вида "запомни <ключ> = <значение>"
+  if (t.toLowerCase().includes('запомни')) {
+    const payload = t.replace(/.*запомни/i, '').trim(); // всё после слова "запомни"
+    const hasSep = payload.includes('=');
+    const key = hasSep ? payload.split('=')[0].trim() : 'note';
+    const value = hasSep ? payload.split('=').slice(1).join('=').trim() : payload;
+    await remember(key, value);
+    act(t, `Запомнил: ${key} = ${value}`);
+    return;
+  }
+
+  act(t, think(t));
 }
 
 // Основной цикл жизни агента

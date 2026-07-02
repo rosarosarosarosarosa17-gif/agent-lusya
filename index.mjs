@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import config from './config.mjs';
-import { route } from './lib/router.mjs';
 import { remember, recall } from './lib/memory.mjs';
+import { ask } from './lib/llm.mjs';
 
 // Читаем настройки из окружения (с значениями по умолчанию)
 const AGENT_NAME = process.env.AGENT_NAME || 'Agent Lusya';
@@ -41,9 +41,9 @@ function listen() {
   return queue.shift();
 }
 
-// Шаг 2 — ДУМАЕМ: отдаём задачу роутеру команд
-function think(task) {
-  return route(task);
+// Шаг 2 — ДУМАЕМ: спрашиваем у LLM (мозг агента)
+async function think(task) {
+  return await ask(task);
 }
 
 // Шаг 3 — ДЕЙСТВУЕМ: выводим результат
@@ -68,7 +68,7 @@ async function tick() {
     return;
   }
 
-  act(t, think(t));
+  act(t, await think(t));
 }
 
 // Основной цикл жизни агента

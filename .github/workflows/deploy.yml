@@ -38,8 +38,8 @@ jobs:
           script: |
             cd /var/www/agent-lusya
             npm install --omit=dev
-            # перезапускаем, если уже запущен; иначе запускаем впервые
-            pm2 restart agent-lusya || pm2 start index.mjs --name agent-lusya
+            # запускаем/перезапускаем агента по конфигу PM2 (идемпотентно)
+            pm2 startOrReload ecosystem.config.cjs
             # сохраняем список процессов, чтобы pm2 поднял агента после ребута
             pm2 save
 

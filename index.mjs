@@ -2,6 +2,7 @@ import 'dotenv/config';
 import config from './config.mjs';
 import { remember, recall } from './lib/memory.mjs';
 import { ask } from './lib/llm.mjs';
+import { startTelegram } from './lib/tg.mjs';
 
 // Читаем настройки из окружения (с значениями по умолчанию)
 const AGENT_NAME = process.env.AGENT_NAME || 'Agent Lusya';
@@ -34,6 +35,14 @@ async function init() {
 
   // Запоминаем текущее время как момент старта
   await remember('last_start', new Date().toISOString());
+
+  // Запускаем Telegram-бота вместе с агентом.
+  // Сообщения из чата отдаём мозгу (think) и отвечаем его ответом.
+  if (process.env.TELEGRAM_TOKEN) {
+    startTelegram(async (text) => await think(text));
+  } else {
+    console.log('⚠️  TELEGRAM_TOKEN не задан — Telegram-бот не запущен');
+  }
 }
 
 // Шаг 1 — СЛУШАЕМ: берём следующую задачу из очереди (или undefined, если пусто)

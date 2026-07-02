@@ -29,5 +29,19 @@ jobs:
             .git
             .env
 
+      - name: Install deps & (re)start agent
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            cd /var/www/agent-lusya
+            npm install --omit=dev
+            # перезапускаем, если уже запущен; иначе запускаем впервые
+            pm2 restart agent-lusya || pm2 start index.mjs --name agent-lusya
+            # сохраняем список процессов, чтобы pm2 поднял агента после ребута
+            pm2 save
+
       - name: Deploy done
         run: echo "✅ Деплой на VPS завершён успешно"

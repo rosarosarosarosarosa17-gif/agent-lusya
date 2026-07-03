@@ -3,13 +3,16 @@ import config from './config.mjs';
 import { remember, recall } from './lib/memory.mjs';
 import { ask } from './lib/llm.mjs';
 import { startTelegram } from './lib/tg.mjs';
+import { checkAgent } from './lib/nadzor.mjs';
 
 // Читаем настройки из окружения (с значениями по умолчанию)
 const AGENT_NAME = process.env.AGENT_NAME || 'Agent Lusya';
 const TICK_MS = Number(process.env.TICK_MS) || 10000;
+const WATCH_MS = 5 * 60 * 1000; // как часто надзор проверяет пульс — 5 минут
 
-// Ссылка на интервал — нужна, чтобы остановить агента при выключении
+// Ссылки на интервалы — нужны, чтобы остановить их при выключении
 let timer = null;
+let watchdog = null;
 
 // Простая очередь задач в памяти (пара примеров для теста).
 // Раздел 3: сюда задачи будут приходить из Telegram / других источников
@@ -64,20 +67,27 @@ function act(task, decision) {
 // Одна итерация работы агента: слушаем → думаем → действуем
 async function tick() {
   const t = listen();
-  if (!t) return;
-
-  // Пример работы с памятью: задача вида "запомни <ключ> = <значение>"
-  if (t.toLowerCase().includes('запомни')) {
-    const payload = t.replace(/.*запомни/i, '').trim(); // всё после слова "запомни"
-    const hasSep = payload.includes('=');
-    const key = hasSep ? payload.split('=')[0].trim() : 'note';
-    const value = hasSep ? payload.split('=').slice(1).join('=').trim() : payload;
-    await remember(key, value);
-    act(t, `Запомнил: ${key} = ${value}`);
-    return;
+  if (t) {
+    // Пример работы с памятью: задача вида "запомни <ключ> = <значение>"
+    if (t.toLowerCase().includes('запомни')) {
+      const payload = t.replace(/.*запомни/i, '').trim(); // всё после слова "запомни"
+      const hasSep = payload.includes('=');
+      const key = hasSep ? payload.split('=')[0].trim() : 'note';
+      const value = hasSep ? payload.split('=').slice(1).join('=').trim() : payload;
+      await remember(key, value);
+      act(t, `Запомнил: ${key} = ${value}`);
+    } else {
+      act(t, await think(t));
+    }
   }
 
-  act(t, await think(t));
+  // Heartbeat: отмечаем в Supabase, что агент жив (каждый тик).
+  // Ошибка записи не должна ронять агента — просто логируем.
+  try {
+    await remember('heartbeat', new Date().toISOString());
+  } catch (err) {
+    console.error('Ошибка записи heartbeat:', err);
+  }
 }
 
 // Основной цикл жизни агента
@@ -88,11 +98,17 @@ async function main() {
   timer = setInterval(() => {
     tick().catch((err) => console.error('Ошибка в тике:', err));
   }, TICK_MS);
+
+  // Каждые WATCH_MS надзор проверяет пульс и при необходимости перезапускает агента
+  watchdog = setInterval(() => {
+    checkAgent().catch((err) => console.error('Ошибка надзора:', err));
+  }, WATCH_MS);
 }
 
 // Аккуратная остановка по сигналу
 function shutdown(signal) {
   if (timer) clearInterval(timer);
+  if (watchdog) clearInterval(watchdog);
   console.log(`${signal} — агент останавливается...`);
   process.exit(0);
 }

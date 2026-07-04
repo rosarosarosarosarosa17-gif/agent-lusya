@@ -4,6 +4,7 @@ import { remember, recall } from './lib/memory.mjs';
 import { ask } from './lib/llm.mjs';
 import { startTelegram } from './lib/tg.mjs';
 import { checkAgent } from './lib/nadzor.mjs';
+import { startServer } from './server.mjs';
 
 // Читаем настройки из окружения (с значениями по умолчанию)
 const AGENT_NAME = process.env.AGENT_NAME || 'Agent Lusya';
@@ -27,6 +28,9 @@ const queue = [
 async function init() {
   console.log(`✅ Агент запущен: ${AGENT_NAME}`);
   console.log('Запущен агент:', config.name);
+
+  // Поднимаем HTTP-сервер агента (/health, /task)
+  startServer();
 
   // Вспоминаем, когда агент стартовал в прошлый раз
   const lastStart = await recall('last_start');
